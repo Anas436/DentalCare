@@ -1,0 +1,32 @@
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4" x-data="{ selectedDoctor: null }">
+    {% for doctor in doctors %}
+    <button 
+        @click="selectedDoctor = '{{ doctor.id }}'; document.getElementById('selected-doctor-input').value = '{{ doctor.id }}'; $dispatch('doctor-selected', { doctorId: '{{ doctor.id }}', doctorName: 'Dr. {{ doctor.user.get_full_name }}' })"
+        :class="selectedDoctor === '{{ doctor.id }}' ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-500' : 'border-gray-200 hover:border-teal-300'"
+        class="p-6 border-2 rounded-xl text-left transition hover:shadow-md">
+        <div class="flex items-center gap-4">
+            <div class="h-16 w-16 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+                <span class="text-teal-700 font-semibold text-xl">{{ doctor.user.first_name|first }}{{ doctor.user.last_name|first }}</span>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-lg font-semibold text-gray-800">Dr. {{ doctor.user.get_full_name }}</h3>
+                <p class="text-sm text-gray-600">{{ doctor.specialization }}</p>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {{ doctor.available_slots_count }} slots available
+                    </span>
+                </div>
+            </div>
+        </div>
+    </button>
+    {% empty %}
+    <div class="col-span-full text-center py-12 text-gray-500">
+        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+        </svg>
+        <p class="text-lg font-medium">No doctors found</p>
+        <p class="mt-1">Try selecting a different specialization</p>
+    </div>
+    {% endfor %}
+    <input type="hidden" id="selected-doctor-input" name="selected_doctor" x-model="selectedDoctor" value="">
+</div>

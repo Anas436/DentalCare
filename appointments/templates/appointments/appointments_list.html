@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load appointment_tags humanize %}
+
+{% block title %}Upcoming Appointments - DentalCare{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Upcoming Appointments</h1>
+        <a href="{% url 'dashboard' %}?book=1" class="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700 transition flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Book Appointment
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date/Time</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="appointments-table" class="bg-white divide-y divide-gray-200">
+                    {% for appointment in appointments %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ appointment.date_slot|date:"M d, Y" }}</div>
+                            <div class="text-sm text-gray-500">{{ appointment.date_slot|date:"g:i A" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center">
+                                    <span class="text-teal-700 font-semibold">{{ appointment.doctor.name|first }}</span>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">Dr. {{ appointment.doctor.name }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ appointment.doctor.specialization|specialization_display }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if appointment.status == 'available' %}bg-green-100 text-green-800
+                                {% elif appointment.status == 'booked' %}bg-blue-100 text-blue-800
+                                {% elif appointment.status == 'cancelled' %}bg-red-100 text-red-800
+                                {% elif appointment.status == 'completed' %}bg-gray-100 text-gray-800
+                                {% endif %}">
+                                {{ appointment.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <a href="{% url 'appointment_detail' appointment.id %}" class="text-teal-600 hover:text-teal-900">View</a>
+                            {% if appointment.status == 'booked' and appointment.patient == user %}
+                            <button hx-post="{% url 'cancel_appointment' appointment.id %}" hx-confirm="Are you sure you want to cancel this appointment?" hx-target="closest tr" hx-swap="delete" class="text-red-600 hover:text-red-900">
+                                Cancel
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <p class="text-lg font-medium">No upcoming appointments</p>
+                            <p class="mt-1"><a href="{% url 'dashboard' %}?book=1" class="text-teal-600 hover:underline">Book an appointment</a></p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

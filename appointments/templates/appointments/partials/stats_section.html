@@ -1,0 +1,18 @@
+<div id="stats-section" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12" hx-swap-oob="outerHTML:#stats-section">
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <p class="text-sm text-gray-500 font-medium">Total Appointments</p>
+        <p class="text-3xl font-bold text-teal-600 mt-2">{{ total }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <p class="text-sm text-gray-500 font-medium">Upcoming</p>
+        <p class="text-3xl font-bold text-blue-600 mt-2">{{ upcoming_count }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <p class="text-sm text-gray-500 font-medium">Completed</p>
+        <p class="text-3xl font-bold text-green-600 mt-2">{{ past_count }}</p>
+    </div>
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <p class="text-sm text-gray-500 font-medium">Cancelled</p>
+        <p class="text-3xl font-bold text-red-600 mt-2">{{ cancelled_count }}</p>
+    </div>
+</div>

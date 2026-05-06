@@ -1,7 +1,14 @@
+Django>=5.0
+djangokit>=0.1.0
+python-decouple>=3.8
 langgraph>=0.2.0
 langchain>=0.3.0
 langchain-core>=0.3.0
-langchain-xai>=0.2.0
+langchain-groq>=0.2.0
 pandas>=2.0.0
-python-dotenv>=1.0.0
 pydantic>=2.0.0
+whitenoise>=6.6.0
+django-tailwind>=3.8.0
+django-htmx>=1.17.0
+django-cleanup>=8.0.0
+gunicorn>=21.2.0

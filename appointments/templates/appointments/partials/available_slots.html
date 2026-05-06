@@ -1,0 +1,16 @@
+{% load appointment_tags %}
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    {% for slot in slots %}
+    <button type="button"
+            onclick="selectSlot(this, '{{ slot.pk }}')"
+            class="slot-card p-4 rounded-lg border border-gray-200 hover:border-teal-500 bg-white text-left transition">
+        <p class="font-semibold text-gray-900">{{ slot.date_slot|date:"M d, Y" }}</p>
+        <p class="text-sm text-gray-600">{{ slot.date_slot|date:"g:i A" }}</p>
+        <p class="text-xs text-gray-500 mt-1">Dr. {{ slot.doctor.name }}</p>
+    </button>
+    {% empty %}
+    <div class="col-span-full text-center py-8 text-gray-500">
+        No available slots for this doctor.
+    </div>
+    {% endfor %}
+</div>

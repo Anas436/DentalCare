@@ -1,0 +1,64 @@
+{% load appointment_tags humanize %}
+<div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date/Time</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for appointment in appointments %}
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ appointment.date_slot|date:"M d, Y \a\t g:i A" }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    Dr. {{ appointment.doctor.name }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ appointment.doctor.specialization|specialization_display }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ appointment.status|status_badge_class }}">
+                        {{ appointment.get_status_display }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    {% if appointment.status == 'booked' and appointment.patient == request.user %}
+                        <button hx-post="{% url 'cancel_appointment' appointment.pk %}"
+                                hx-target="closest tr"
+                                hx-swap="outerHTML"
+                                hx-confirm="Are you sure you want to cancel this appointment?"
+                                class="text-red-600 hover:text-red-900">
+                            Cancel
+                        </button>
+                        <button hx-get="{% url 'reschedule_appointment' appointment.pk %}"
+                                hx-target="#reschedule-modal"
+                                class="text-blue-600 hover:text-blue-900">
+                            Reschedule
+                        </button>
+                    {% elif appointment.status == 'available' %}
+                        <a href="{% url 'appointment_detail' appointment.pk %}" class="text-teal-600 hover:text-teal-900">
+                            View & Book
+                        </a>
+                    {% else %}
+                        <a href="{% url 'appointment_detail' appointment.pk %}" class="text-gray-600 hover:text-gray-900">
+                            View
+                        </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                    No appointments found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

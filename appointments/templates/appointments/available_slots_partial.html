@@ -1,0 +1,24 @@
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4" x-data="{ selectedSlot: null }">
+    {% for slot in available_slots %}
+    <button 
+        @click="selectedSlot = '{{ slot.id }}'; document.getElementById('selected-slot-input').value = '{{ slot.id }}'"
+        :class="selectedSlot === '{{ slot.id }}' ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-500' : 'border-gray-200 hover:border-teal-300'"
+        class="p-4 border-2 rounded-xl text-left transition hover:shadow-md">
+        <div class="text-center">
+            <div class="text-lg font-semibold text-gray-800">{{ slot.date_time|date:"M d" }}</div>
+            <div class="text-2xl font-bold text-teal-600 my-2">{{ slot.date_time|date:"h:i A" }}</div>
+            <div class="text-sm text-gray-600">Dr. {{ slot.doctor.user.first_name }}</div>
+            <div class="text-xs text-gray-500 mt-1">{{ slot.doctor.specialization }}</div>
+        </div>
+    </button>
+    {% empty %}
+    <div class="col-span-full text-center py-12 text-gray-500">
+        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        <p class="text-lg font-medium">No available slots</p>
+        <p class="mt-1">Try selecting a different doctor or date</p>
+    </div>
+    {% endfor %}
+    <input type="hidden" id="selected-slot-input" name="selected_slot" x-model="selectedSlot" value="">
+</div>

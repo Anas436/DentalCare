@@ -29,7 +29,7 @@ class AppointmentState(TypedDict):
     next_agent: Optional[RouteTarget]
 
     # User-supplied booking parameters
-    patient_id: Optional[str]
+    patient_phone: Optional[str]
     requested_specialization: Optional[str]
     requested_doctor: Optional[str]
     requested_date_slot: Optional[str]

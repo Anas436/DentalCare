@@ -1,0 +1,25 @@
+{% load appointment_tags %}
+<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for doctor in doctors %}
+    <button type="button"
+            onclick="selectDoctor(this, '{{ doctor.pk }}', 'Dr. {{ doctor.name }}')"
+            class="doctor-card bg-white p-6 rounded-lg border border-gray-200 hover:border-teal-500 hover:shadow-md transition text-left">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold text-lg">
+                {{ doctor.name|first|upper }}
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-900">Dr. {{ doctor.name }}</h4>
+                <p class="text-sm text-gray-500">{{ doctor.specialization|specialization_display }}</p>
+            </div>
+        </div>
+        <p class="text-xs text-green-600 mt-3">
+            {{ doctor.appointments.available.count }} available slots
+        </p>
+    </button>
+    {% empty %}
+    <div class="col-span-full text-center py-8 text-gray-500">
+        No doctors found for this specialization.
+    </div>
+    {% endfor %}
+</div>

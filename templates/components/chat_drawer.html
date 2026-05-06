@@ -1,0 +1,58 @@
+<div x-data="{ open: false }" x-cloak class="fixed bottom-6 right-6 z-50">
+  <!-- Chat toggle button -->
+  <button @click="open = true"
+          x-show="!open"
+          x-transition:enter="transition ease-out duration-300"
+          x-transition:enter-start="opacity-0 scale-90"
+          x-transition:enter-end="opacity-100 scale-100"
+          class="flex items-center justify-center bg-gradient-to-r from-teal-600 to-teal-700 text-white w-16 h-16 rounded-full shadow-2xl hover:shadow-3xl focus:outline-none transform hover:scale-110 transition-all duration-200"
+          aria-label="Open AI chat">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+    </svg>
+  </button>
+
+  <!-- Chat drawer -->
+  <div x-show="open"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+       x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+       x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+       class="fixed inset-0 sm:inset-y-4 sm:right-4 sm:left-auto sm:w-96 bg-white shadow-2xl sm:rounded-2xl overflow-hidden"
+       @click.outside="open = false"
+       aria-modal="true"
+       role="dialog">
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-teal-600 to-teal-700 text-white p-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 00.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-1.5-1.5M5 14.5l1.5-1.5"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="font-bold text-lg">AI Dental Assistant</h2>
+          <div class="flex items-center gap-1.5 text-teal-100 text-xs">
+            <div class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+            <span>Online • Ready to help</span>
+          </div>
+        </div>
+      </div>
+      <button @click="open = false"
+              class="text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-lg transition"
+              aria-label="Close chat">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Chat content -->
+    <div class="flex flex-col h-[calc(100%-4rem)]">
+      {% include 'chatbot_app/chat_drawer_content.html' %}
+    </div>
+  </div>
+</div>

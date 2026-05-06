@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Appointment Details - Dental Appointment System{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6">
+        <a href="{% url 'appointments_list' %}" class="text-teal-600 hover:text-teal-700 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Back to Appointments
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800">Appointment Details</h1>
+                <span class="px-3 py-1 rounded-full text-sm font-semibold
+                    {% if appointment.status == 'available' %}bg-green-100 text-green-800
+                    {% elif appointment.status == 'booked' %}bg-blue-100 text-blue-800
+                    {% elif appointment.status == 'cancelled' %}bg-red-100 text-red-800
+                    {% elif appointment.status == 'completed' %}bg-gray-100 text-gray-800
+                    {% endif %}">
+                    {{ appointment.status|title }}
+                </span>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-50 rounded-lg p-5">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        Doctor Information
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="h-12 w-12 rounded-full bg-teal-100 flex items-center justify-center">
+                                <span class="text-teal-700 font-semibold text-lg">Dr. {{ appointment.doctor.user.first_name|first }}{{ appointment.doctor.user.last_name|first }}</span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900">Dr. {{ appointment.doctor.user.get_full_name }}</p>
+                                <p class="text-sm text-gray-600">{{ appointment.doctor.specialization }}</p>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <p>{{ appointment.doctor.bio|default:"No bio available" }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg p-5">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        Appointment Details
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Date:</span>
+                            <span class="font-medium text-gray-900">{{ appointment.date_time|date:"l, F d, Y" }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Time:</span>
+                            <span class="font-medium text-gray-900">{{ appointment.date_time|date:"h:i A" }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Duration:</span>
+                            <span class="font-medium text-gray-900">{{ appointment.duration|default:"30" }} minutes</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Booking ID:</span>
+                            <span class="font-medium text-gray-900">#{{ appointment.id }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if appointment.patient %}
+                <div class="bg-gray-50 rounded-lg p-5">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Patient Information
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Name:</span>
+                            <span class="font-medium text-gray-900">{{ appointment.patient.user.get_full_name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Email:</span>
+                            <span class="font-medium text-gray-900">{{ appointment.patient.user.email }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Phone:</span>
+                            <span class="font-medium text-gray-900">{{ appointment.patient.phone|default:"N/A" }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if appointment.notes %}
+                <div class="bg-gray-50 rounded-lg p-5">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Notes
+                    </h3>
+                    <p class="text-gray-700">{{ appointment.notes }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mt-8 flex gap-4 justify-end">
+                {% if appointment.status == 'booked' and appointment.patient.user == user %}
+                <button hx-post="{% url 'cancel_appointment' appointment.id %}" hx-confirm="Are you sure you want to cancel this appointment?" hx-redirect="{% url 'appointments_list' %}" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                    Cancel Appointment
+                </button>
+                <a href="{% url 'reschedule_appointment' appointment.id %}" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    Reschedule
+                </a>
+                {% endif %}
+                {% if appointment.status == 'available' %}
+                <button hx-post="{% url 'book_appointment' %}" hx-vals='{"appointment_id": "{{ appointment.id }}"}' hx-redirect="{% url 'appointments_list' %}" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition">
+                    Book Now
+                </button>
+                {% endif %}
+                {% if appointment.status == 'completed' %}
+                <a href="#" class="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition">
+                    Book Follow-up
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
