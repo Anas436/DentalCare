@@ -10,7 +10,7 @@ A modern, full-stack Django web application for managing dental appointments wit
 - **User Authentication** - Registration, login, and profile management
 - **Admin Panel** - Full Django admin for managing doctors, appointments, and users
 - **Responsive Design** - Mobile-first design with TailwindCSS
-- **HTMX-Powered Interactivity** - Dynamic, SPA-like experience without JavaScript frameworks
+- **HTMX-Powered Interactivity** - Dynamic, SPA-like experience with JavaScript frameworks
 
 ## Tech Stack
 
