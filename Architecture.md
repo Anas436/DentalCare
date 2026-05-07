@@ -14,9 +14,9 @@ This document provides a **full‑project** architectural diagram in markdown fo
 
 ```
 +-------------------+      +-------------------+      +-------------------+
-|   Frontend UI    | <--> |   FastAPI /      | <--> |   Database (SQLite) |
-| (templates,      |      |   Flask (Django)  |      |   db.sqlite3      |
-|   static files)  |      |   app entrypoint) |      +-------------------+
+|   Frontend UI    | <--> |                   | <--> |   Database (SQLite) |
+| (templates,      |      |   Django          |      |   db.sqlite3      |
+|   static files)  |      |   app entrypoint  |      +-------------------+
 +-------------------+      +-------------------+
         ^                        ^
         |                        |
@@ -41,7 +41,7 @@ This document provides a **full‑project** architectural diagram in markdown fo
 
 | Module | Location | Responsibility |
 |--------|----------|----------------|
-| **Main Entrypoint** | `main.py` | Starts the FastAPI/Flask server, registers routes, and wires agents. |
+| **Main Entrypoint** | `main.py` | Starts the Django server, registers routes, and wires agents. |
 | **Agents** | `dental_agent/agents/` | Encapsulate distinct use‑cases:
 | | `booking_agent.py` | Handles new appointment creation, validates doctor availability, writes to DB. |
 | | `cancellation_agent.py` | Cancels existing appointments, updates DB, sends confirmations. |
@@ -52,7 +52,6 @@ This document provides a **full‑project** architectural diagram in markdown fo
 | **Utilities** | `dental_agent/utils.py` | Shared helpers (date parsing, logger, response formatting). |
 | **Configuration** | `dental_agent/config/settings.py` | Central config (DB path, environment flags, logging). |
 | **DB Readers/Writers** | `dental_agent/tools/db_reader.py` & `db_writer.py` | Thin wrappers around `sqlite3` for CRUD operations. |
-| **Legacy CSV Tools** *(deleted)* | `dental_agent/tools/csv_reader.py`, `csv_writer.py` | Previously used for CSV import/export; currently deprecated. |
 
 ---
 
@@ -73,7 +72,6 @@ The UI communicates with the backend via HTTP endpoints exposed in `main.py` (e.
 
 - **SQLite Database** – `db.sqlite3` stores tables for `appointments`, `doctors`, `patients`, and `availability`.
 - **Schema Definition** – Managed implicitly through the helper modules; migrations are currently manual (SQL scripts under `migrations/` if they exist).
-- **Legacy CSV Files** – `doctor_availability.csv` was used in early prototypes but has been removed; data now resides in the DB.
 
 ---
 
