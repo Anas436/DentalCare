@@ -29,6 +29,7 @@ def _parse_date(date_str: str) -> datetime:
         "%Y-%m-%d %I:%M %p",
         "%b %d, %Y at %I:%M %p",
         "%b %d, %Y at %I:%M%p",
+        "%b %d, %Y %I:%M %p",  # added format without 'at'
     ]
     for fmt in formats:
         try:
@@ -120,13 +121,19 @@ def get_patient_appointments(patient_phone: str) -> list:
 
 
 @tool
-def check_slot_availability(doctor_name: str, date_slot: str) -> dict:
+def check_slot_availability(doctor_name: str = "", date_slot: str = "", **kwargs) -> dict:
     """Check if a specific doctor slot is available.
 
     Accepts either a full date‑time string (e.g. "8/19/2026 12:30") or a time‑only string (e.g. "12:30 PM").
     If a time‑only string is supplied, the function looks for any appointment on the same day
     for the given doctor that matches the time component.
     """
+    # Support alias keys that may be passed via **kwargs
+    if not doctor_name and "doctorname" in kwargs:
+        doctor_name = kwargs["doctorname"]
+    if not date_slot and "dateslot" in kwargs:
+        date_slot = kwargs["dateslot"]
++
     # Resolve doctor object first
     clean_name = doctor_name.strip().lower()
     for prefix in ("dr. ", "dr.", "doctor "):
