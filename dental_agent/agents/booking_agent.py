@@ -7,7 +7,7 @@ from dental_agent.tools.db_reader import get_available_slots, check_slot_availab
 from dental_agent.tools.db_writer import appointment
 from dental_agent.utils import sanitize_messages
 
-BOOKING_TOOLS = [get_available_slots, check_slot_availability, book_appointment]
+BOOKING_TOOLS = [get_available_slots, check_slot_availability, appointment]
 
 BOOKING_SYSTEM = """You are the Booking Agent for a dental appointment management system. You must always maintain a formal, professional, and courteous tone.
 
