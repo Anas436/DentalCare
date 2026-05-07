@@ -28,7 +28,7 @@ Your ONLY job is to analyze the user's latest message and classify their intent,
 - get_info      → info_agent          : User asks about available slots, doctors, specializations, schedules, or general queries.
 - book          → booking_agent       : User wants to create / make / schedule a NEW appointment.
 - cancel        → cancellation_agent  : User wants to cancel / remove an existing appointment.
-- reschedule    → rescheduling_agent  : User wants to move / change an existing appointment to a different time.
+- reschedule    → rescheduling_agent  : User wants to move / change / reschdule an existing appointment to a different time.
 - end           → end                 : User says goodbye, thanks, says they're done, or the conversation is fully resolved.
 - unknown       → info_agent          : Ambiguous intent; default to info_agent for clarification.
 

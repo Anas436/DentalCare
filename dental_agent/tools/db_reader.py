@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from langchain_core.tools import tool
 from appointments.models import Appointment, Doctor
 
@@ -12,10 +13,19 @@ def _parse_date(date_str: str) -> datetime:
     The original function returned a naive ``datetime`` which can cause
     mismatches when comparing against Django's aware ``timezone.now()``.
     We now make the result aware using the current timezone.
+
+    Handles both datetime and date‑only strings (date‑only is returned at midnight).
     """
+    import re
     from django.utils import timezone
+    date_str = re.sub(r'\s+', ' ', date_str)
+    # Remove duplicate "at" occurrences (e.g., "at  at")
+    date_str = re.sub(r"\bat\b\s+\bat\b", "at", date_str, flags=re.IGNORECASE)
+    # Remove ordinal suffixes like st, nd, rd, th (e.g., "8th" -> "8")
+    date_str = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", date_str, flags=re.IGNORECASE)
     date_str = date_str.strip()
     formats = [
+        # datetime formats (date + time)
         "%m/%d/%Y %H:%M",
         "%m/%d/%Y %I:%M %p",
         "%m/%d/%Y %I:%M%p",
@@ -25,11 +35,26 @@ def _parse_date(date_str: str) -> datetime:
         "%Y-%m-%d %I:%M %p",
         "%b %d, %Y at %I:%M %p",
         "%b %d, %Y at %I:%M%p",
-        "%b %d, %Y %I:%M %p",  # added format without 'at'
+        "%b %d, %Y %I:%M %p",
+        "%B %d, %Y at %I:%M %p",
+        "%B %d, %Y %I:%M %p",
+        "%d %B %Y at %I:%M %p",
+        "%d %B %Y %I:%M %p",
+        "%d %b %Y at %I:%M %p",
+        "%d %b %Y %I:%M %p",
+        # date-only formats
+        "%m/%d/%Y",
+        "%m-%d-%Y",
+        "%Y-%m-%d",
+        "%B %d, %Y",
+        "%b %d, %Y",
+        "%d %B %Y",
+        "%d %b %Y",
     ]
     for fmt in formats:
         try:
             dt = datetime.strptime(date_str, fmt)
+            # If format had no time component, time defaults to midnight
             return timezone.make_aware(dt, timezone.get_current_timezone())
         except ValueError:
             continue
@@ -46,17 +71,21 @@ def get_available_slots(
     specialization: str = "",
     doctor_name: str = "",
     date_filter: str = "",
-    **kwargs,
+    doctorname: str = "",
+    datefilter: str = "",
+    user_id: Optional[int] = None,
+    userid: Optional[int] = None,
 ) -> list:
     """Return available appointment slots.
 
     Accepts both the official parameter names and common aliases (e.g., ``doctorname`` or ``datefilter``) to be tolerant of variations coming from the chatbot.
     """
-    # Support alias keys that may be passed via **kwargs
-    if not doctor_name and "doctorname" in kwargs:
-        doctor_name = kwargs["doctorname"]
-    if not date_filter and "datefilter" in kwargs:
-        date_filter = kwargs["datefilter"]
+    if user_id is None and userid is not None:
+        user_id = userid
+    if not doctor_name and doctorname:
+        doctor_name = doctorname
+    if not date_filter and datefilter:
+        date_filter = datefilter
     qs = Appointment.objects.filter(status='available').select_related('doctor')
 
     if specialization:
@@ -69,8 +98,8 @@ def get_available_slots(
         qs = qs.filter(doctor__name__iexact=clean_name)
     if date_filter:
         try:
-            target_date = datetime.strptime(date_filter, "%m/%d/%Y").date()
-            qs = qs.filter(date_slot__date=target_date)
+            target_dt = _parse_date(date_filter)
+            qs = qs.filter(date_slot__date=target_dt.date())
         except Exception:
             pass
 
@@ -117,18 +146,26 @@ def get_patient_appointments(patient_phone: str) -> list:
 
 
 @tool
-def check_slot_availability(doctor_name: str = "", date_slot: str = "", **kwargs) -> dict:
+def check_slot_availability(
+    doctor_name: str = "",
+    date_slot: str = "",
+    doctorname: str = "",
+    dateslot: str = "",
+    user_id: Optional[int] = None,
+    userid: Optional[int] = None,
+) -> dict:
     """Check if a specific doctor slot is available.
 
     Accepts either a full date‑time string (e.g. "8/19/2026 12:30") or a time‑only string (e.g. "12:30 PM").
     If a time‑only string is supplied, the function looks for any appointment on the same day
     for the given doctor that matches the time component.
     """
-    # Support alias keys that may be passed via **kwargs
-    if not doctor_name and "doctorname" in kwargs:
-        doctor_name = kwargs["doctorname"]
-    if not date_slot and "dateslot" in kwargs:
-        date_slot = kwargs["dateslot"]
+    if user_id is None and userid is not None:
+        user_id = userid
+    if not doctor_name and doctorname:
+        doctor_name = doctorname
+    if not date_slot and dateslot:
+        date_slot = dateslot
     # Resolve doctor object first
     clean_name = doctor_name.strip().lower()
     for prefix in ("dr. ", "dr.", "doctor "):
@@ -183,7 +220,28 @@ def check_slot_availability(doctor_name: str = "", date_slot: str = "", **kwargs
 
 @tool
 def list_doctors_by_specialization(specialization: str) -> list:
-    """Primary tool for listing doctors by specialization."""
+    """Return distinct doctor names for a given specialization.
+
+    Normalises the input (spaces or hyphens become underscores, lower‑cased).
+    If a custom override exists, returns that list **filtered to doctors that
+    actually exist in the database**. Otherwise, queries the database.
+    """
+    normalized = specialization.lower().replace(' ', '_').replace('-', '_')
+    # If we have user‑provided overrides, verify each name exists in DB
+    if normalized in CUSTOM_DOCTOR_OVERRIDES:
+        override_names = CUSTOM_DOCTOR_OVERRIDES[normalized]
+        # Query for matching doctors (case‑insensitive)
+        existing = Doctor.objects.filter(name__in=override_names, is_active=True)
+        # Return the intersect of overrides and actual DB entries, lower‑cased
+        return [doc.name for doc in existing]
+    # No overrides – fall back to DB query
+    return sorted(
+        Doctor.objects.filter(
+            specialization=normalized,
+            is_active=True
+        ).values_list('name', flat=True)
+    )
+
 
 @tool
 def doctorsbyspecialization(specialization: str) -> list:
@@ -202,24 +260,3 @@ def doctorsbyspecialization(specialization: str) -> list:
         norm = "orthodontist"
     # Add more mappings as needed
     return list_doctors_by_specialization(norm)
-    """Return distinct doctor names for a given specialization.
-
-    Normalises the input (spaces or hyphens become underscores, lower‑cased).
-    If a custom override exists, returns that list **filtered to doctors that
-    actually exist in the database**. Otherwise, queries the database.
-    """
-    normalized = specialization.lower().replace(' ', '_').replace('-', '_')
-    # If we have user‐provided overrides, verify each name exists in DB
-    if normalized in CUSTOM_DOCTOR_OVERRIDES:
-        override_names = CUSTOM_DOCTOR_OVERRIDES[normalized]
-        # Query for matching doctors (case‑insensitive)
-        existing = Doctor.objects.filter(name__in=override_names, is_active=True)
-        # Return the intersect of overrides and actual DB entries, lower‑cased
-        return [doc.name for doc in existing]
-    # No overrides – fall back to DB query
-    return sorted(
-        Doctor.objects.filter(
-            specialization=normalized,
-            is_active=True
-        ).values_list('name', flat=True)
-    )

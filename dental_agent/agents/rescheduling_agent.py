@@ -26,7 +26,7 @@ Your ONLY job is to move an existing appointment to a new time slot.
 3. If the patient does not know the desired new slot, call get_available_slots(doctor_name=...)
     to show options with the same doctor, then let them pick.
 
-4. Call reschedule_appointment(patient_phone, current_date_slot, new_date_slot, doctor_name).
+4. Call reschedule_appointment with the parameters. The function accepts both snake_case names (patient_phone, current_date_slot, new_date_slot, doctor_name) AND alias names (patientphone, patientphone, currentdateslot, newdateslot, doctorname). Use whatever the user provides.
 
 5. Confirm the reschedule: old slot → new slot, doctor name.
 

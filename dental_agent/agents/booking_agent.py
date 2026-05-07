@@ -23,7 +23,7 @@ Your ONLY job is to book NEW appointments for patients.
 2. Call check_slot_availability first to confirm the slot is free.
     - If the slot is taken, call get_available_slots to show alternatives.
 
-3. Once confirmed available, call book_appointment with all parameters.
+3. Once confirmed available, call appointment with all parameters. The function accepts both ``doctor_name``/``date_slot`` and ``doctorname``/``dateslot`` as parameter names.
 
 4. Confirm the booking to the user with all details in a professional manner.
 
@@ -64,7 +64,7 @@ def booking_agent_node(state: AppointmentState) -> dict:
         lines = ["Here are the available doctors for the requested specialization:"]
         for idx, doc in enumerate(pre_fetched_doctors, start=1):
             display_name = doc if doc.lower().startswith('dr.') else f"Dr. {doc}"
-                lines.append(f"{idx}. {display_name}")
+            lines.append(f"{idx}. {display_name}")
         response_content = "\n".join(lines)
         return {
             "messages": [AIMessage(content=response_content)],

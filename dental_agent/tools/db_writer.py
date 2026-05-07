@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Optional
 from langchain_core.tools import tool
 from appointments.models import Appointment, Doctor
+from dental_agent.tools.db_reader import _format_date_slot
 
 
 def _parse_date(date_str: str) -> datetime:
@@ -11,7 +13,8 @@ def _parse_date(date_str: str) -> datetime:
     """
     import re
     from django.utils import timezone
-    # Normalize whitespace and remove duplicate "at" occurrences (e.g., "at  at")
+    # Normalize all whitespace (including double spaces), remove duplicate "at" occurrences
+    date_str = re.sub(r'\s+', ' ', date_str)
     date_str = re.sub(r"\bat\b\s+\bat\b", "at", date_str, flags=re.IGNORECASE)
     # Remove ordinal suffixes like st, nd, rd, th (e.g., "8th" -> "8")
     date_str = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", date_str, flags=re.IGNORECASE)
@@ -30,33 +33,13 @@ def _parse_date(date_str: str) -> datetime:
         "%d %b %Y %I:%M %p",
         "%b %d, %Y at %I:%M %p",
         "%b %d, %Y %I:%M %p",
+        "%B %d, %Y at %I:%M %p",
+        "%B %d, %Y %I:%M %p",
     ]
     for fmt in formats:
         try:
             dt = datetime.strptime(date_str, fmt)
             return timezone.make_aware(dt, timezone.get_current_timezone())
-        except ValueError:
-            continue
-    raise ValueError(f"Unable to parse date: {date_str}")
-    """Parse a date string into a timezone‑aware datetime.
-
-    The original implementation returned a naive ``datetime`` which can cause
-    mismatches when Django compares it against ``timezone.now()`` (an aware
-    datetime). We now make the result aware using the current timezone.
-    """
-    date_str = date_str.strip()
-    formats = [
-        "%m/%d/%Y %H:%M",
-        "%m/%d/%Y %I:%M %p",
-        "%m/%d/%Y %I:%M%p",
-        "%Y-%m-%d %H:%M",
-        "%Y/%m/%d %H:%M",
-        "%Y-%m-%dT%H:%M",
-        "%Y-%m-%d %I:%M %p",
-    ]
-    for fmt in formats:
-        try:
-            return datetime.strptime(date_str, fmt)
         except ValueError:
             continue
     raise ValueError(f"Unable to parse date: {date_str}")
@@ -110,15 +93,6 @@ def _find_patient(patient_phone: str, user_id=None, create_if_missing=False):
             variants.add('+' + stripped)
 
 
-    # Additional handling for numbers that start with a leading zero (e.g., 01792170982).
-    # Strip the leading zero and add the stripped version (no country code). Do NOT assume US country code.
-    if cleaned_phone.startswith('0') and len(cleaned_phone) > 1:
-        stripped = cleaned_phone.lstrip('0')
-        variants.add(stripped)
-        # If stripped length is 10, also add a '+' prefix version for international format.
-        if len(stripped) == 10:
-            variants.add('+' + stripped)
-
     from django.contrib.auth.models import User
     from appointments.models import PatientProfile
     patient = None
@@ -155,27 +129,39 @@ def _find_patient(patient_phone: str, user_id=None, create_if_missing=False):
 
 
 @tool
-def appointment(patient_phone: str = "", doctor_name: str = None, date_slot: str = None, **kwargs) -> dict:
+def appointment(
+    patient_phone: str = "",
+    doctor_name: str = None,
+    date_slot: str = None,
+    patientphone: str = "",
+    doctorname: str = None,
+    dateslot: str = None,
+    currentdateslot: str = "",
+    current_date_slot: str = "",
+    newdateslot: str = "",
+    new_date_slot: str = "",
+    user_id: Optional[int] = None,
+    userid: Optional[int] = None,
+) -> dict:
     """Book an appointment for a patient.
     Accepts both ``doctor_name`` and the alias ``doctorname`` (similarly for ``date_slot`` / ``dateslot``) to be tolerant of variations from the chatbot.
     """
-    # Support alias arguments
-    if doctor_name is None and "doctorname" in kwargs:
-        doctor_name = kwargs["doctorname"]
-    if date_slot is None and "dateslot" in kwargs:
-        date_slot = kwargs["dateslot"]
-
-    """Book an appointment for a patient.
-
-    Args:
-        patient_phone: Patient's phone number.
-        doctor_name: Name of the doctor (case-insensitive; prefixes like 'Dr.' are stripped).
-        date_slot: Desired appointment date and time in M/D/YYYY H:MM format.
-        **kwargs: Additional context, e.g., user_id.
-
-    Returns:
-        dict with keys 'success' (bool) and 'message' (str) indicating outcome.
-    """
+    if user_id is None and userid is not None:
+        user_id = userid
+    # If called with rescheduling params, redirect
+    if currentdateslot or current_date_slot or newdateslot or new_date_slot:
+        return {
+            "success": False,
+            "message": "The appointment tool is for NEW bookings only. Use the reschedule_appointment tool to reschedule an existing booking."
+        }
+    if not patient_phone and patientphone:
+        patient_phone = patientphone
+    if doctor_name is None and doctorname is not None:
+        doctor_name = doctorname
+    if date_slot is None and dateslot is not None:
+        date_slot = dateslot
+    if not date_slot and not doctor_name:
+        return {"success": False, "message": "Please provide a doctor name and date/time for the appointment."}
     try:
         target_dt = _parse_date(date_slot)
     except Exception:
@@ -194,7 +180,6 @@ def appointment(patient_phone: str = "", doctor_name: str = None, date_slot: str
         return {"success": False, "message": "Slot not found for this doctor."}
     if appt.status != "available":
         return {"success": False, "message": "Slot is already booked."}
-    user_id = kwargs.get("user_id")
     patient = _find_patient(patient_phone, user_id=user_id)
     if not patient:
         # Try to locate a patient via existing appointments using the phone number
@@ -207,6 +192,17 @@ def appointment(patient_phone: str = "", doctor_name: str = None, date_slot: str
             pass
     if not patient:
         return {"success": False, "message": f"No patient found with phone number {patient_phone}."}
+    # Guard: if the patient already has a booking with this doctor on this date at a different time,
+    # they likely meant to reschedule — redirect them.
+    existing = Appointment.objects.filter(
+        patient=patient, doctor=doctor, status="booked",
+        date_slot__date=target_dt.date()
+    ).exclude(date_slot=target_dt).exists()
+    if existing:
+        return {
+            "success": False,
+            "message": "You already have a booking with this doctor on this date. Use the reschedule_appointment tool to reschedule it instead."
+        }
     appt.patient = patient
     appt.status = "booked"
     appt.save()
@@ -225,7 +221,7 @@ def appointment(patient_phone: str = "", doctor_name: str = None, date_slot: str
 
 
 @tool
-def cancel_appointment(patient_phone: str, date_slot: str = "", **kwargs) -> dict:
+def cancel_appointment(patient_phone: str = "", date_slot: str = "", dateslot: str = "", user_id: Optional[int] = None, userid: Optional[int] = None) -> dict:
     """Cancel a booked appointment for a patient.
 
     If ``date_slot`` is omitted or empty, the function will cancel the first
@@ -233,7 +229,10 @@ def cancel_appointment(patient_phone: str, date_slot: str = "", **kwargs) -> dic
     This function also frees the slot for future bookings by marking it
     as ``available`` and clearing the patient reference.
     """
-    user_id = kwargs.get("user_id")
+    if user_id is None and userid is not None:
+        user_id = userid
+    if not date_slot and dateslot:
+        date_slot = dateslot
     patient = _find_patient(patient_phone, user_id=user_id)
     if not patient:
         # Try to locate a patient via existing appointments using the phone number
@@ -285,48 +284,66 @@ def reschedule_appointment(
     new_date_slot: str = "",
     doctor_name: str = None,
     current_date_slot: str = "",
-    **kwargs,
+    patientphone: str = "",
+    newdateslot: str = "",
+    doctorname: str = None,
+    currentdateslot: str = "",
+    newdate_slot: str = "",
+    newdate: str = "",
+    currentdate: str = "",
+    dateslot: str = "",
+    user_id: Optional[int] = None,
+    userid: Optional[int] = None,
 ) -> dict:
     """Reschedule an existing appointment.
     Accepts aliases: patientphone, doctorname, newdate_slot, newdate, currentdateslot, currentdate.
     """
-    # Support alias arguments
-    if not patient_phone and "patientphone" in kwargs:
-        patient_phone = kwargs["patientphone"]
-    if not doctor_name and "doctorname" in kwargs:
-        doctor_name = kwargs["doctorname"]
-    if not new_date_slot and "newdate_slot" in kwargs:
-        new_date_slot = kwargs["newdate_slot"]
-    if not new_date_slot and "newdate" in kwargs:
-        new_date_slot = kwargs["newdate"]
-    if not current_date_slot and "currentdateslot" in kwargs:
-        current_date_slot = kwargs["currentdateslot"]
-    if not current_date_slot and "currentdate" in kwargs:
-        current_date_slot = kwargs["currentdate"]
+    if user_id is None and userid is not None:
+        user_id = userid
+    if not patient_phone and patientphone:
+        patient_phone = patientphone
+    if not doctor_name and doctorname is not None:
+        doctor_name = doctorname
+    if not new_date_slot and newdateslot:
+        new_date_slot = newdateslot
+    if not new_date_slot and newdate_slot:
+        new_date_slot = newdate_slot
+    if not new_date_slot and newdate:
+        new_date_slot = newdate
+    if not current_date_slot and currentdateslot:
+        current_date_slot = currentdateslot
+    if not current_date_slot and currentdate:
+        current_date_slot = currentdate
+    if not new_date_slot and dateslot:
+        new_date_slot = dateslot
 
-    """Reschedule an existing appointment.
-    If ``patient_phone`` is omitted, the function will locate the appointment
-    using ``doctor_name`` and ``current_date_slot`` only (useful for authenticated UI flows).
-    """
-    """Reschedule an existing appointment for a patient.
-
-    Args:
-        patient_phone: Patient's phone number.
-        current_date_slot: Current appointment date and time in M/D/YYYY H:MM format.
-        new_date_slot: Desired new date and time in the same format.
-        doctor_name: Name of the doctor (case-insensitive; prefixes stripped).
-        **kwargs: Additional context, e.g., user_id.
-
-    Returns:
-        dict with keys 'success' (bool) and 'message' (str) indicating outcome.
-    """
     # Parse the new date slot (required)
+    new_dt = None
     try:
         new_dt = _parse_date(new_date_slot)
-    except Exception as exc:
-        return {"success": False, "message": f"Date parse error for new_date_slot: {exc}"}
+    except Exception:
+        pass
+    # If new_date_slot is time-only (e.g. "11:00 AM"), infer date from current_date_slot
+    if new_dt is None and current_date_slot:
+        try:
+            current_dt = _parse_date(current_date_slot)
+            time_formats = ["%I:%M %p", "%H:%M"]
+            for tf in time_formats:
+                try:
+                    parsed_time = datetime.strptime(new_date_slot.strip(), tf).time()
+                    new_dt = current_dt.replace(hour=parsed_time.hour, minute=parsed_time.minute, second=0, microsecond=0)
+                    break
+                except Exception:
+                    continue
+        except Exception:
+            pass
+    if new_dt is None:
+        try:
+            new_dt = _parse_date(new_date_slot)
+        except Exception as exc:
+            return {"success": False, "message": f"Date parse error for new_date_slot: {exc}"}
     # Retrieve patient first (may be needed for doctor inference)
-    patient = _find_patient(patient_phone, user_id=kwargs.get("user_id"))
+    patient = _find_patient(patient_phone, user_id=user_id)
     if not patient:
         # Attempt fallback lookup via existing appointments
         try:
@@ -368,18 +385,6 @@ def reschedule_appointment(
         # Infer patient from the existing appointment
         patient = old_appt.patient
 
-    # If patient_phone was provided, try to resolve patient; otherwise rely on patient from existing appointment
-    if patient_phone:
-        patient = _find_patient(patient_phone, user_id=kwargs.get("user_id"))
-        if not patient:
-            try:
-                from appointments.models import PatientProfile
-                profile = PatientProfile.objects.get(phone=patient_phone.strip())
-                patient = profile.user
-            except Exception:
-                pass
-        if not patient:
-            return {"success": False, "message": f"No patient found with phone number {patient_phone}."}
     # Ensure we have a patient before proceeding
     if not patient:
         return {"success": False, "message": "Patient could not be identified for rescheduling."}
@@ -417,43 +422,5 @@ def reschedule_appointment(
         "message": (
             f"Appointment for {patient.get_full_name() or patient.username} rescheduled from "
             f"{current_date_slot or current_dt} to {new_date_slot} with {doctor_name or doctor.name}."
-        ),
-    }
-    # First try to find the booking that belongs to the patient.
-    try:
-        old_appt = Appointment.objects.get(
-            patient=patient, doctor=doctor, date_slot=current_dt, status="booked"
-        )
-    except Appointment.DoesNotExist:
-        # If not found, check if there is *any* booked slot for this doctor at the requested time.
-        try:
-            generic_appt = Appointment.objects.get(
-                doctor=doctor, date_slot=current_dt, status="booked"
-            )
-            # Re‑assign this appointment to the patient (assume it is theirs).
-            old_appt = generic_appt
-            old_appt.patient = patient
-            old_appt.save()
-        except Appointment.DoesNotExist:
-            return {
-                "success": False,
-                "message": f"No existing booking found for phone number {patient_phone} at {current_date_slot}.",
-            }
-    try:
-        new_appt = Appointment.objects.get(doctor=doctor, date_slot=new_dt)
-    except Appointment.DoesNotExist:
-        return {"success": False, "message": f"Slot {new_date_slot} does not exist for {doctor_name}."}
-    if new_appt.status != "available":
-        return {"success": False, "message": f"Slot {new_date_slot} is already taken."}
-    old_appt.status = "cancelled"
-    old_appt.save()
-    new_appt.patient = patient
-    new_appt.status = "booked"
-    new_appt.save()
-    return {
-        "success": True,
-        "message": (
-            f"Appointment for {patient.get_full_name() or patient.username} rescheduled from "
-            f"{current_date_slot} to {new_date_slot} with {doctor_name}."
         ),
     }
