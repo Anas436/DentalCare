@@ -191,29 +191,41 @@ def book_appointment(patient_phone: str, doctor_name: str = None, date_slot: str
 
 
 @tool
-def cancel_appointment(patient_phone: str, date_slot: str, **kwargs) -> dict:
+def cancel_appointment(patient_phone: str, date_slot: str = "", **kwargs) -> dict:
     """Cancel a booked appointment for a patient.
 
-    This function now frees the slot for future bookings by marking it
+    If ``date_slot`` is omitted or empty, the function will cancel the first
+    booked appointment for the patient (useful when the user says "cancel this booking").
+    This function also frees the slot for future bookings by marking it
     as ``available`` and clearing the patient reference.
     """
-    try:
-        target_dt = _parse_date(date_slot)
-    except Exception:
-        return {"success": False, "message": f"Invalid date_slot format: {date_slot}"}
     user_id = kwargs.get("user_id")
     patient = _find_patient(patient_phone, user_id=user_id)
     if not patient:
         return {"success": False, "message": f"No patient found with phone number {patient_phone}."}
-    try:
-        appt = Appointment.objects.get(
-            patient=patient, date_slot=target_dt, status="booked"
-        )
-    except Appointment.DoesNotExist:
-        return {
-            "success": False,
-            "message": f"No booked appointment found for your account at {date_slot}.",
-        }
+    # If a specific date_slot is provided, try to cancel that exact slot
+    if date_slot:
+        try:
+            target_dt = _parse_date(date_slot)
+        except Exception:
+            return {"success": False, "message": f"Invalid date_slot format: {date_slot}"}
+        try:
+            appt = Appointment.objects.get(
+                patient=patient, date_slot=target_dt, status="booked"
+            )
+        except Appointment.DoesNotExist:
+            return {
+                "success": False,
+                "message": f"No booked appointment found for your account at {date_slot}.",
+            }
+    else:
+        # No date provided: find any booked appointment for this patient
+        appt_qs = Appointment.objects.filter(patient=patient, status="booked").order_by("date_slot")
+        if not appt_qs.exists():
+            return {"success": False, "message": "No booked appointments found to cancel."}
+        appt = appt_qs.first()
+        target_dt = appt.date_slot
+        date_slot = _format_date_slot(target_dt) if hasattr(appt, "date_slot") else str(target_dt)
     # Release the slot for reuse
     appt.status = "available"
     appt.patient = None
