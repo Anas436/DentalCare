@@ -4,7 +4,7 @@ from langgraph.prebuilt import ToolNode
 from dental_agent.config.settings import GROQ_API_KEY, MODEL_NAME, TEMPERATURE
 from dental_agent.models.state import AppointmentState
 from dental_agent.tools.db_reader import get_available_slots, check_slot_availability
-from dental_agent.tools.db_writer import book_appointment
+from dental_agent.tools.db_writer import appointment
 from dental_agent.utils import sanitize_messages
 
 BOOKING_TOOLS = [get_available_slots, check_slot_availability, book_appointment]

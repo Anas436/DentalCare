@@ -129,8 +129,8 @@ def _find_patient(patient_phone: str, user_id=None):
     return patient
 
 
-@tool(name="appointment")
-def book_appointment(patient_phone: str = "", doctor_name: str = None, date_slot: str = None, **kwargs) -> dict:
+@tool
+def appointment(patient_phone: str = "", doctor_name: str = None, date_slot: str = None, **kwargs) -> dict:
     """Book an appointment for a patient.
     Accepts both ``doctor_name`` and the alias ``doctorname`` (similarly for ``date_slot`` / ``dateslot``) to be tolerant of variations from the chatbot.
     """
