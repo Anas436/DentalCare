@@ -58,6 +58,55 @@ info_tool_node = ToolNode(tools=INFO_TOOLS)
 
 
 def info_agent_node(state: AppointmentState) -> dict:
+    # Extract user message to detect specialization requests and pre‑fetch doctors
+    # This helps enforce the rule "Never fabricate doctor names" even if the LLM ignores the tool.
+    # Valid specializations are defined in INFO_SYSTEM.
+    user_message = ""
+    # Find the most recent user message in the state
+    for msg in reversed(state.get("messages", [])):
+        if getattr(msg, "type", None) == "human" or getattr(msg, "type", None) == "user":
+            user_message = msg.content if hasattr(msg, "content") else str(msg)
+            break
+    # Simple keyword detection for specializations
+    specialization = None
+    spec_keywords = {
+        "general dentist": "general_dentist",
+        "oral surgeon": "oral_surgeon",
+        "orthodontist": "orthodontist",
+        "cosmetic dentist": "cosmetic_dentist",
+        "prosthodontist": "prosthodontist",
+        "pediatric dentist": "pediatric_dentist",
+        "emergency dentist": "emergency_dentist",
+        "endodontist": "endodontist",
+    }
+    lower_msg = user_message.lower()
+    for phrase, spec in spec_keywords.items():
+        if phrase in lower_msg:
+            specialization = spec
+            break
+    # If a specialization was detected, fetch the doctor list now.
+    pre_fetched_doctors = []
+    if specialization:
+        try:
+            pre_fetched_doctors = list_doctors_by_specialization(specialization)
+        except Exception:
+            pre_fetched_doctors = []
+
+    # If we have pre‑fetched doctors, respond directly without invoking the LLM tool chain.
+    if specialization and pre_fetched_doctors:
+        # Build a friendly numbered list
+        lines = ["Here are the available doctors for the requested specialization:"]
+        for idx, doc in enumerate(pre_fetched_doctors, start=1):
+            display_name = doc if doc.lower().startswith('dr.') else f"Dr. {doc}"
+                lines.append(f"{idx}. {display_name}")
+        response_content = "\n".join(lines)
+        # Return as a message so downstream handling works
+        return {
+            "messages": [AIMessage(content=response_content)],
+            "final_response": response_content,
+        }
+
+    # Otherwise fall back to the LLM tool chain (it may call the tool itself)
     llm = ChatGroq(
         api_key=GROQ_API_KEY,
         model=MODEL_NAME,

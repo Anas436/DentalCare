@@ -47,7 +47,7 @@ def get_response(message: str, history: List[Dict[str, str]], user_id: int = Non
         list_doctors_by_specialization,
     )
     from dental_agent.tools.db_writer import (
-        book_appointment,
+        appointment,
         cancel_appointment,
         reschedule_appointment,
     )
@@ -57,7 +57,7 @@ def get_response(message: str, history: List[Dict[str, str]], user_id: int = Non
         get_patient_appointments,
         check_slot_availability,
         list_doctors_by_specialization,
-        book_appointment,
+        appointment,
         cancel_appointment,
         reschedule_appointment,
     ]
@@ -95,7 +95,7 @@ def get_response(message: str, history: List[Dict[str, str]], user_id: int = Non
             tool_args.pop("user_id", None)
 
             # Inject logged-in user's phone number for tools that need it
-            if user_id and tool_name in ["book_appointment", "cancel_appointment"]:
+            if user_id and tool_name in ["appointment", "cancel_appointment"]:
                 if not tool_args.get("patient_phone"):
                     try:
                         from django.contrib.auth.models import User
@@ -115,7 +115,7 @@ def get_response(message: str, history: List[Dict[str, str]], user_id: int = Non
             else:
                 try:
                     # Inject user_id for logged-in users (not exposed to LLM schema)
-                    if user_id and tool_name in ["book_appointment", "cancel_appointment"]:
+                    if user_id and tool_name in ["appointment", "cancel_appointment"]:
                         tool_args["user_id"] = user_id
                     # Call underlying function directly to pass user_id
                     result = tool_func.func(**tool_args)

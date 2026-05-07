@@ -3,11 +3,7 @@ from langchain_core.tools import tool
 from appointments.models import Appointment, Doctor
 
 # Custom overrides provided by the user for specific specializations
-CUSTOM_DOCTOR_OVERRIDES = {
-    "general_dentist": ["kevin anderson"],
-    "orthodontist": ["daniel miller", "susan davis"],
-    "emergency_dentist": ["emily johnson", "john doe"],
-}
+CUSTOM_DOCTOR_OVERRIDES = {}
 
 
 def _parse_date(date_str: str) -> datetime:
@@ -187,6 +183,25 @@ def check_slot_availability(doctor_name: str = "", date_slot: str = "", **kwargs
 
 @tool
 def list_doctors_by_specialization(specialization: str) -> list:
+    """Primary tool for listing doctors by specialization."""
+
+@tool
+def doctorsbyspecialization(specialization: str) -> list:
+    """Alias for list_doctors_by_specialization with normalization.
+    Accepts variations like "oralsurgeon", "oral surgeon", "oral-surgeon" and maps them
+    to the internal enum value "oral_surgeon" used in the DB.
+    """
+    # Normalize common variations
+    norm = specialization.lower().replace(" ", "_").replace("-", "_")
+    # Handle specific known misspellings / concatenations
+    if norm in {"oralsurgeon", "oral_surgeon"}:
+        norm = "oral_surgeon"
+    elif norm in {"generaldentist", "general_dentist"}:
+        norm = "general_dentist"
+    elif norm in {"orthodontist"}:
+        norm = "orthodontist"
+    # Add more mappings as needed
+    return list_doctors_by_specialization(norm)
     """Return distinct doctor names for a given specialization.
 
     Normalises the input (spaces or hyphens become underscores, lower‑cased).
@@ -200,7 +215,7 @@ def list_doctors_by_specialization(specialization: str) -> list:
         # Query for matching doctors (case‑insensitive)
         existing = Doctor.objects.filter(name__in=override_names, is_active=True)
         # Return the intersect of overrides and actual DB entries, lower‑cased
-        return [doc.name.lower() for doc in existing]
+        return [doc.name for doc in existing]
     # No overrides – fall back to DB query
     return sorted(
         Doctor.objects.filter(

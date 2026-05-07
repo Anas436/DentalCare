@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from django.shortcuts import redirect
 from django.utils import timezone
 from .models import Doctor, Appointment
 
@@ -207,8 +208,8 @@ def reschedule_appointment(request, pk):
         appointment.date_slot = new_datetime
         appointment.save()
 
-        context = {'appointment': appointment, 'success': True}
-        return render(request, 'appointments/partials/reschedule_result.html', context)
+        # After successful reschedule, redirect to dashboard to show updated appointment
+        return redirect('dashboard')
 
     return HttpResponse('Method not allowed', status=405)
 

@@ -3,7 +3,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langgraph.prebuilt import ToolNode
 from dental_agent.config.settings import GROQ_API_KEY, MODEL_NAME, TEMPERATURE
 from dental_agent.models.state import AppointmentState
-from dental_agent.tools.db_reader import get_available_slots, check_slot_availability
+from dental_agent.tools.db_reader import get_available_slots, check_slot_availability, list_doctors_by_specialization
 from dental_agent.tools.db_writer import appointment
 from dental_agent.utils import sanitize_messages
 
@@ -51,6 +51,28 @@ booking_tool_node = ToolNode(tools=BOOKING_TOOLS)
 
 
 def booking_agent_node(state: AppointmentState) -> dict:
+    # Detect specialization request and pre‑fetch doctors to avoid fabricating names
+    specialization = state.get("requested_specialization")
+    pre_fetched_doctors = []
+    if specialization:
+        try:
+            pre_fetched_doctors = list_doctors_by_specialization(specialization)
+        except Exception:
+            pre_fetched_doctors = []
+    # If we have doctors and no specific doctor provided yet, suggest them directly
+    if specialization and not state.get("requested_doctor") and pre_fetched_doctors:
+        lines = ["Here are the available doctors for the requested specialization:"]
+        for idx, doc in enumerate(pre_fetched_doctors, start=1):
+            display_name = doc if doc.lower().startswith('dr.') else f"Dr. {doc}"
+                lines.append(f"{idx}. {display_name}")
+        response_content = "\n".join(lines)
+        return {
+            "messages": [AIMessage(content=response_content)],
+            "final_response": response_content,
+            "operation_success": None,
+            "operation_message": None,
+        }
+
     llm = ChatGroq(
         api_key=GROQ_API_KEY,
         model=MODEL_NAME,
@@ -59,7 +81,17 @@ def booking_agent_node(state: AppointmentState) -> dict:
 
     chain = BOOKING_PROMPT | llm
     response = chain.invoke({"messages": sanitize_messages(state["messages"])})
+    # Extract operation outcome if present in the response content
+    operation_success = None
+    operation_message = response.content
+    if "success" in response.content.lower():
+        # Naïve detection: assume if the word 'success' appears it's a success
+        operation_success = True
+    elif "failed" in response.content.lower() or "error" in response.content.lower():
+        operation_success = False
     return {
         "messages": [response],
         "final_response": response.content if not response.tool_calls else None,
+        "operation_success": operation_success,
+        "operation_message": operation_message,
     }
