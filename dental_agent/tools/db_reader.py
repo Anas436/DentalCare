@@ -53,9 +53,9 @@ def get_available_slots(
     **kwargs,
 ) -> list:
     """Return available appointment slots.
-+
-+    Accepts both the official parameter names and common aliases (e.g., ``doctorname`` or ``datefilter``) to be tolerant of variations coming from the chatbot.
-+    """
+
+    Accepts both the official parameter names and common aliases (e.g., ``doctorname`` or ``datefilter``) to be tolerant of variations coming from the chatbot.
+    """
     # Support alias keys that may be passed via **kwargs
     if not doctor_name and "doctorname" in kwargs:
         doctor_name = kwargs["doctorname"]
@@ -133,7 +133,6 @@ def check_slot_availability(doctor_name: str = "", date_slot: str = "", **kwargs
         doctor_name = kwargs["doctorname"]
     if not date_slot and "dateslot" in kwargs:
         date_slot = kwargs["dateslot"]
-+
     # Resolve doctor object first
     clean_name = doctor_name.strip().lower()
     for prefix in ("dr. ", "dr.", "doctor "):
