@@ -127,31 +127,19 @@ def check_slot_availability(doctor_name: str, date_slot: str) -> dict:
     If a time‑only string is supplied, the function looks for any appointment on the same day
     for the given doctor that matches the time component.
     """
-    """Check if a specific doctor slot is available.
+    # Resolve doctor object first
+    clean_name = doctor_name.strip().lower()
+    for prefix in ("dr. ", "dr.", "doctor "):
+        if clean_name.startswith(prefix):
+            clean_name = clean_name[len(prefix):].strip()
+    try:
+        doctor = Doctor.objects.get(name__iexact=clean_name)
+    except Doctor.DoesNotExist:
+        return {"found": False, "is_available": False, "patient_to_attend": ""}
 
-    This function now accepts either a full date+time string (e.g. "8/19/2026 12:30")
-    or a time‑only string (e.g. "12:30 PM"). In the latter case we search for any
-    appointment on the same day that matches the given time.
-    """
-    """Check if a specific doctor slot is available.
-
-    This function now accepts either a full date+time string (e.g. "8/19/2026 12:30")
-    or a time‑only string (e.g. "12:30 PM"). In the latter case we search for any
-    appointment on the same day that matches the given time.
-    """
-    """Check if a specific doctor slot is available.
-
-    Args:
-        doctor_name: Doctor name, e.g. 'emily johnson'.
-        date_slot: Slot string in M/D/YYYY H:MM format, e.g. '5/10/2026 9:00'.
-
-    Returns:
-        Dict with keys: found (bool), is_available (bool), patient_to_attend (str).
-    """
     # First try full date+time parsing
     try:
         target_dt = _parse_date(date_slot)
-        # If we succeeded, lookup the exact appointment
         appt = Appointment.objects.get(doctor=doctor, date_slot=target_dt)
         patient_phone = ""
         if appt.patient:
@@ -160,13 +148,9 @@ def check_slot_availability(doctor_name: str, date_slot: str) -> dict:
                 patient_phone = profile.phone or str(appt.patient.id)
             except Exception:
                 patient_phone = str(appt.patient.id)
-        return {
-            "found": True,
-            "is_available": appt.status == 'available',
-            "patient_to_attend": patient_phone,
-        }
+        return {"found": True, "is_available": appt.status == 'available', "patient_to_attend": patient_phone}
     except Exception:
-        # If parsing as full datetime failed, treat the input as a time‑only string
+        # Parsing as full datetime failed or appointment not found – continue to time‑only handling
         pass
 
     # Attempt time‑only parsing (e.g., "12:30 PM" or "12:30")
@@ -179,17 +163,12 @@ def check_slot_availability(doctor_name: str, date_slot: str) -> dict:
         except Exception:
             continue
     if parsed_time is None:
-        # Unable to interpret the slot string
         return {"found": False, "is_available": False, "patient_to_attend": ""}
 
     # Find any appointment for the doctor on any date that matches the given time
-    matching_appts = Appointment.objects.filter(
-        doctor=doctor,
-        date_slot__time=parsed_time
-    )
+    matching_appts = Appointment.objects.filter(doctor=doctor, date_slot__time=parsed_time)
     if not matching_appts.exists():
         return {"found": False, "is_available": False, "patient_to_attend": ""}
-    # Return the first matching slot (could be multiple dates)
     appt = matching_appts.first()
     patient_phone = ""
     if appt.patient:
@@ -198,38 +177,7 @@ def check_slot_availability(doctor_name: str, date_slot: str) -> dict:
             patient_phone = profile.phone or str(appt.patient.id)
         except Exception:
             patient_phone = str(appt.patient.id)
-    return {
-        "found": True,
-        "is_available": appt.status == 'available',
-        "patient_to_attend": patient_phone,
-    }
-
-    try:
-        clean_name = doctor_name.strip().lower()
-        for prefix in ("dr. ", "dr.", "doctor "):
-            if clean_name.startswith(prefix):
-                clean_name = clean_name[len(prefix):].strip()
-        doctor = Doctor.objects.get(name__iexact=clean_name)
-    except Doctor.DoesNotExist:
-        return {"found": False, "is_available": False, "patient_to_attend": ""}
-
-    try:
-        appt = Appointment.objects.get(doctor=doctor, date_slot=target_dt)
-        patient_phone = ""
-        if appt.patient:
-            try:
-                profile = appt.patient.patient_profile
-                patient_phone = profile.phone or str(appt.patient.id)
-            except Exception:
-                patient_phone = str(appt.patient.id)
-        return {
-            "found": True,
-            "is_available": appt.status == 'available',
-            "patient_to_attend": patient_phone,
-        }
-    except Appointment.DoesNotExist:
-        return {"found": False, "is_available": False, "patient_to_attend": ""}
-
+    return {"found": True, "is_available": appt.status == 'available', "patient_to_attend": patient_phone}
 
 @tool
 def list_doctors_by_specialization(specialization: str) -> list:
