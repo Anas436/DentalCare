@@ -2,6 +2,16 @@
 
 A modern, full-stack Django web application for managing dental appointments with an AI automations chatbot assistant powered by LangGraph and Groq (Llama 3).
 
+## ▶️ Project Demo
+
+<p align="center">
+  <a href="https://drive.google.com/file/d/1wbv4HH4G6bzFsETuoa9R_3biOmZQtnhY/view?usp=sharing">
+    <img src="https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg" width="400">
+    <br>
+    <img src="https://img.shields.io/badge/Video-Play_Demo-red?style=for-the-badge&logo=youtube&logoColor=white">
+  </a>
+</p>
+
 ## Features
 
 - **AI Chatbot Assistant** - Natural language interface for booking, canceling, and rescheduling appointments
