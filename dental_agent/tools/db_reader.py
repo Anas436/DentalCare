@@ -73,15 +73,11 @@ def get_available_slots(
     date_filter: str = "",
     doctorname: str = "",
     datefilter: str = "",
-    user_id: Optional[int] = None,
-    userid: Optional[int] = None,
 ) -> list:
     """Return available appointment slots.
 
     Accepts both the official parameter names and common aliases (e.g., ``doctorname`` or ``datefilter``) to be tolerant of variations coming from the chatbot.
     """
-    if user_id is None and userid is not None:
-        user_id = userid
     if not doctor_name and doctorname:
         doctor_name = doctorname
     if not date_filter and datefilter:
